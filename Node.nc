@@ -79,7 +79,7 @@ implementation{
    //runs dijkstra's algorithm for shortest path
    //void algorithm();
    void findNext();
-   void algorithm(uint16_t Dest, uint16_t Cost, uint16_t Next, uint8_t * Nbors, uint16_t Length);
+   void algorithm(uint16_t Dest, uint16_t Cost, uint16_t Next);
 
    void printLSP();
 
@@ -114,8 +114,8 @@ implementation{
 		//printLSP();
 		//findNext();
 	}
-	if (accessCounter > 1 && accessCounter % 20 == 0 && accessCounter < 61)
-		algorithm(TOS_NODE_ID, 0, 0);
+	if (accessCounter > 1 && accessCounter % 20 == 0 && accessCounter < 21)
+		algorithm(TOS_NODE_ID, 0, TOS_NODE_ID);
    }
 
 
@@ -541,15 +541,16 @@ implementation{
 		call Confirmed.pushfront(Link);
 		
 		if (Link.Dest != TOS_NODE_ID) {
+			//dbg(ROUTING_CHANNEL, "not TOS_NODE_ID\n");
 			for (i = 0; i < call RoutingTable.size(); i++) {
 				temp = call RoutingTable.get(i);
 				if (temp.Dest == Dest) {
 					for (j = 0; j < temp.NeighborsLength; j++) {
-						if (Dest.Neighbors[j] > 0) {
+						if (temp.Neighbors[j] > 0) {
 							inTent = FALSE;
 							inCon = FALSE;
 							if (!call Tentative.isEmpty()) {
-								for (k = 0; k < Tentative.size(); k++) {
+								for (k = 0; k < call Tentative.size(); k++) {
 									temp2 = call Tentative.get(k);
 									if (temp2.Dest == temp.Neighbors[j]) {
 										inTent = TRUE;
@@ -581,31 +582,37 @@ implementation{
 				next = call Neighbors.get(j);
 				for (n = 0; n < call RoutingTable.size(); n++) {
 					temp = call RoutingTable.get(n);
-					if (temp.Dest == next.Dest) {
+					if (temp.Dest == next.Node) {
 						inTent = FALSE;
 						inCon = FALSE;
 						if (!call Tentative.isEmpty()) {
 							for (k = 0; k < call Tentative.size(); k++) {
 								temp2 = call Tentative.get(k);
-								if (temp2.Dest == temp.Dest && temp2.Cost >= temp.Cost) {
-									temp4 = call Tentative.removefromList(k);
+								if (temp2.Dest == temp.Dest && temp2.Cost > temp.Cost) {
+									temp4 = call Tentative.removeFromList(k);
 									temp4.Cost = temp.Cost;
 									temp4.Next = temp.Next;
 									call Tentative.pushfront(temp4);
 									inTent = TRUE;
 								}
+								if (temp2.Dest == temp.Dest && temp2.Cost == temp.Cost) {
+									inTent = TRUE;
+								}
 							}
 						}
 						if (!call Confirmed.isEmpty()) {
+							//dbg(ROUTING_CHANNEL, "debugConfirmedNotEmpty\n");
 							for (m = 0; m < call Confirmed.size(); m++) {
 								temp3 = call Confirmed.get(m);
-								if (temp3.Dest == temp.Neighbors[j]) {
+								if (temp3.Dest == temp.Dest) {
+									//dbg(ROUTING_CHANNEL, "ConSetTrue\n");
 									inCon = TRUE;
 								}
 							}
 						}
 						if (!inTent && !inCon) {
-							call Tentative.pushFront(temp);
+							//dbg(ROUTING_CHANNEL, "noTent and noCon\n");
+							call Tentative.pushfront(temp);
 						}
 					}
 				}
@@ -614,7 +621,7 @@ implementation{
 		
 		inCon = FALSE;
 		p = call Tentative.size();
-		
+		//dbg(ROUTING_CHANNEL, "p = %d\n", p);		
 		if (p == 1) {
 			temp4 = call Tentative.get(0);
 			call Tentative.popback();
@@ -624,11 +631,11 @@ implementation{
 					inCon = TRUE;
 				}
 				if (!inCon) {
-					if (temp4.Next == temp3.Dest) }
+					if (temp4.Next == temp3.Dest) {
 						temp4.Next = temp3.Next;
 						for (j = 0; j < call Neighbors.size(); j++) {
 							next = call Neighbors.get(j);
-							if (temp4.Next == next.Dest) {
+							if (temp4.Next == next.Node) {
 								break;
 							}
 						}
@@ -645,20 +652,20 @@ implementation{
 			temp4 = call Tentative.get(0);
 			q = 0;
 			for (k = 1; k < call Tentative.size(); k++) {
-				temp3 = call Tentative.get(k);
-				if (temp4.Cost > temp3.Cost) {
+				temp2 = call Tentative.get(k);
+				if (temp4.Cost > temp2.Cost) {
 					q = k;
-					temp4 = temp3;
+					temp4 = temp2;
 				}
-				else if (temp4.Cost == temp3.Cost && temp4.Dest > temp3.Dest) {
+				else if (temp4.Cost == temp2.Cost && temp4.Dest > temp2.Dest) {
 					q = k;
-					temp4 = temp3;
+					temp4 = temp2;
 				}
 			}
 			temp2 = call Tentative.get(q);
 			for (m = 0; m < call Confirmed.size(); m++) {
 				temp3 = call Confirmed.get(q);
-				if (temp2.Dest == temp3.dest) {
+				if (temp2.Dest == temp3.Dest) {
 					inCon = TRUE;
 				}
 				if (!inCon) {
@@ -666,7 +673,7 @@ implementation{
 						temp4.Next = temp3.Next;
 						for (j = 0; j < call Neighbors.size(); j++) {
 							next = call Neighbors.get(j);
-							if (temp4.Next == next.Dest) {
+							if (temp4.Next == next.Node) {
 								break;
 							}
 						}
@@ -675,7 +682,8 @@ implementation{
 			}
 		}
 		
-		if (!inCon) {
+		if (p <= 0) {}
+		else if (!inCon) {
 			if (call Tentative.size() - 1 > 1 && q == call Tentative.size() -1) {
 				call Tentative.popback();
 			}
@@ -687,204 +695,4 @@ implementation{
 		}
 		
 	}
-
-	// void algorithm(uint16_t Dest, uint16_t Cost, uint16_t Next, uint8_t* Nbors, uint16_t Length) {
-	//	LinkState temp;
-    //	Neighbor temp2;
-	//	Neighbor TEMP;
-	//	LinkState temp3;
-		//LinkState temp4;
-		//LinkState temp5;
-		//LinkState temp6;
-		//LinkState temp7;
-		//LinkState minTemp;
-		//uint16_t i,j,k,l,m,minCost,minInt;
-		//uint16_t tentInt;
-		//uint8_t NeighborsArr[64];
-		//bool inTentList;
-		//bool inConList;
-		//dbg(GENERAL_CHANNEL, "we made it!\n");
-		//temp.Dest = Dest;
-		//temp.Cost = Cost;
-		//temp.Next = Next;
-		//dbg(ROUTING_CHANNEL, "here?1\n");
-		//temp.NeighborsLength = Length;
-		//dbg(ROUTING_CHANNEL, "here?2\n");
-		//dbg(ROUTING_CHANNEL, "temp.Dest = %d, temp.Cost = %d, temp.Next = %d, temp.Length = %d\n", Dest, Cost, Next, Length);
-		//if(algopush == 0 || temp.Dest != TOS_NODE_ID)
-		//{
-		//	call Confirmed.pushfront(temp);
-		//	algopush++;
-		//}
-	//	if (temp.Dest != TOS_NODE_ID) {
-		//	//dbg(ROUTING_CHANNEL, "bleh %d\n", 1);
-		//	for(i=0; i<call RoutingTable.size(); i++)
-		//	{
-			//dbg(ROUTING_CHANNEL, "bleh %d\n", 2);
-		//		temp6 = call RoutingTable.get(i);
-	//			if(temp6.Dest == Dest)
-	//			{
-	//				//dbg(ROUTING_CHANNEL, "bleh %d\n", 3);
-		//			break;
-		//		}
-		//	}
-	//		for (i = 0; i < temp6.NeighborsLength; i++) {
-				//dbg(ROUTING_CHANNEL, "bleh %d, NeighborsLength: %d\n", 4, temp6.NeighborsLength);
-	//			NeighborsArr[i] = temp6.Neighbors[i];
-				//NeighborsArr = Nbors;
-	//		}
-	//		temp = temp6; 
-	//	}
-		//else
-	//	{
-		//	for(i = 0; i < call Neighbors.size(); i++)
-		//	{
-	//			TEMP = call Neighbors.get(i);
-		//		NeighborsArr[i] = TEMP.Node;
-	//		}
-		//}
-		//for (j = 0; j < call Neighbors.size(); j++){
-		//	temp2 = call Neighbors.get(j);
-		//	for (i = 0; i < call RoutingTable.size(); i++){
-			//	temp3 = call RoutingTable.get(i);
-			//	inTentList = FALSE;
-			//	inConList = FALSE;
-			//	if (temp.Dest == TOS_NODE_ID) {
-			//		if(temp2.Node == temp3.Dest)
-			//		{
-			//			temp3.Next = temp2.Node;
-			//			if (!call Tentative.isEmpty()) {
-			//				for (k = 0; k < call Tentative.size(); k++){
-			//					temp4 = call Tentative.get(k);
-			//					if (temp4.Dest == temp3.Dest) {
-			//						inTentList = TRUE;
-			//						tentInt = k;
-			//					}
-			//				}
-			//			}
-			//			if (!call Confirmed.isEmpty()) {
-			//				for (k = 0; k < call Confirmed.size(); k++){
-			//					temp4 = call Confirmed.get(k);
-		//						if (temp4.Dest == temp3.Dest) {
-			//						inConList = TRUE;
-			//					}
-		//					}
-		//				}
-		//				if (!inTentList && !inConList) {
-		//					call Tentative.pushfront(temp3);
-			//			}
-		//				else if (inTentList) {
-			//				temp4 = call Tentative.get(tentInt);
-			//				if (temp3.Cost < temp4.Cost) {
-			//					removefunction(tentInt);
-			//					call Tentative.pushfront(temp3); 
-			//				}
-		//				}
-		//			}
-		//			else
-			//		{
-			//			for(k = 0; k < temp3.NeighborsLength; k++)
-			//			{
-			//				if(temp3.Neighbors[k] == temp2.Node)
-			//				{
-				//				temp3.Next = temp2.Node;
-				//				if(!call Tentative.isEmpty())
-				//				{
-				//					for(m = 0; m < call Tentative.size(); m++)
-				//					{
-				//						temp4 = call Tentative.get(k);
-				//						if(temp4.Dest == temp3.Dest)
-				//						{
-				//							inTentList = TRUE;
-				//							tentInt = m;
-				//						}
-				//					}
-				//				}
-				//				if(!call Confirmed.isEmpty())
-				//				{
-				//					for(m = 0; m < call Confirmed.size(); m++)
-				//					{
-				//						temp4 = call Confirmed.get(m);
-				//						if(temp4.Dest == temp3.Dest)
-				//						{
-				//							inConList = TRUE;
-				//						}
-				//					}
-				//				}
-				//				if(!inTentList && !inConList)
-				//				{
-				//					call Tentative.pushfront(temp3);
-				//				}
-				//				else if(inTentList)
-				//				{
-				//					temp4 = call Tentative.get(tentInt);
-				//					if(temp3.Cost < temp4.Cost)
-				//					{
-				//						removefunction(tentInt);
-				//						call Tentative.pushfront(temp3);
-				//					}
-				//				}
-				//			}
-				//		}
-				//	}
-				}	
-		//		else if (temp.Dest != TOS_NODE_ID) {
-		//			for (k = 0; k < temp.NeighborsLength; k++) { 
-		//				if (temp.Neighbors[k] == temp2.Node) {
-		//					for(m = 0; m < temp.NeighborsLength; m++)
-		//					{
-		//						if(temp.Neighbors[m] == temp3.Dest && temp.Neighbors[m] != temp2.Node)
-		//						{
-		//							temp3.Next = temp2.Node;
-		//							if (!call Tentative.isEmpty()) {
-		//								for (l = 0; l < call Tentative.size(); l++) {
-		//									temp4 = call Tentative.get(l);
-		//									if (temp4.Dest == temp3.Dest) {
-		//										inTentList = TRUE;
-		//										tentInt = l;
-		//									}
-		//								}
-		//							}
-		//							if (!call Confirmed.isEmpty()) {
-		//								for (l = 0; l < call Confirmed.size(); l++) {
-			//								temp4 = call Confirmed.get(l);
-			//								if (temp4.Dest == temp3.Dest) {
-		//										inConList = TRUE;
-		//									}
-		//								}
-		//							} 
-		//							if (!inTentList && !inConList) {
-		//								call Tentative.pushfront(temp3);
-		//							}
-		//							else if (inTentList) {
-		//								temp4 = call Tentative.get(tentInt);
-			//							if (temp3.Cost < temp4.Cost) {
-			//								removefunction(tentInt);
-			//								call Tentative.pushfront(temp3);
-			//							}	
-			//						}
-			//					}
-			//				}
-			//			}									
-			//		}	
-			//	} 
-		//	}
-		//}
-		//if (call Tentative.isEmpty()) {
-		//	return;
-		//}
-		//else {
-			//minCost = 65535;
-			//for (k = 0; k < call Tentative.size(); k++) {
-			//	minTemp = call Tentative.get(k);
-			//	if (minTemp.Cost < minCost) {
-			//		minCost = minTemp.Cost;
-			//		minInt = k;
-		//		} 
-			//}
-		//	minTemp = call Tentative.get(minInt);
-		//	removefunction(minInt);
-		//	algorithm(minTemp.Dest, minTemp.Cost, minTemp.Next, (uint8_t*) minTemp.Neighbors, minTemp.NeighborsLength);			
-	//	}		
-	//}
 }

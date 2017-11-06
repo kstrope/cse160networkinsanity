@@ -102,12 +102,16 @@ implementation{
 	command t List.removeFromList(uint16_t index) {
 		t temp;
 		uint16_t i = 0;
+		uint16_t j = size;
+		j--;
 		temp = container[index];
-		for (i = 0; i < index; i++){
-			container[i+1] = container[i];
-		}
-		container[0] = temp;
-		temp = call List.popfront();
+		//for (i = 0; i < index; i++){
+		//	container[i+1] = container[i];
+		//}
+		//container[0] = temp;
+		container[index] = container[j];
+		container[j] = temp;
+		//temp = call List.popfront();
 		return temp;
 	}
 }
